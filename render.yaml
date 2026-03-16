@@ -1,0 +1,93 @@
+﻿services:
+  - type: web
+    name: voiceai-web
+    env: docker
+    plan: starter
+    dockerfilePath: apps/web/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://voiceai-api.onrender.com
+
+  - type: web
+    name: voiceai-api
+    env: docker
+    plan: starter
+    dockerfilePath: apps/api/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: voiceai-db
+          property: connectionString
+      - key: PGSSLMODE
+        value: require
+      - key: REDIS_URL
+        fromService:
+          name: voiceai-redis
+          type: keyvalue
+          property: connectionString
+      - key: API_URL
+        value: https://voiceai-api.onrender.com
+      - key: WEB_URL
+        value: https://voiceai-web.onrender.com
+      - key: JWT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PRESIGN_EXPIRY
+        value: "3600"
+      - key: AZURE_TTS_KEY
+        sync: false
+      - key: AZURE_TTS_REGION
+        sync: false
+
+  - type: worker
+    name: voiceai-worker
+    env: docker
+    plan: starter
+    dockerfilePath: apps/worker/Dockerfile
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          name: voiceai-redis
+          type: keyvalue
+          property: connectionString
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_PRESIGN_EXPIRY
+        value: "3600"
+      - key: AZURE_TTS_KEY
+        sync: false
+      - key: AZURE_TTS_REGION
+        sync: false
+
+  - type: keyvalue
+    name: voiceai-redis
+    plan: starter
+
+databases:
+  - name: voiceai-db
+    plan: basic-256mb

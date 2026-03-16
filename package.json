@@ -1,0 +1,17 @@
+{
+  "name": "voice-ai",
+  "version": "1.0.0",
+  "description": "MVP goal: a minimal ElevenLabs-style TTS platform with a web studio, API access, basic voice library, and usage-based billing.",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "dev:api": "npm --prefix apps/api run start:dev",
+    "dev:worker": "cmd /c \"cd /d apps\\worker && python -m uvicorn app.main:app --reload --port 8001\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
