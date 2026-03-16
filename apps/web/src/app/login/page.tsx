@@ -1,12 +1,22 @@
 "use client";
 
+"use client";
+
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0b0d]" />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -186,7 +196,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white placeholder-gray-500 outline-none transition focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-                placeholder="????????"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
