@@ -1,72 +1,73 @@
-﻿services:
+services:
+  # 1. Next.js Frontend (Web Interfeys)
   - type: web
-    name: voiceai-web
-    env: docker
-    plan: starter
-    dockerfilePath: apps/web/Dockerfile
+    name: voice-ai-web
+    env: node
+    buildCommand: npm install && npm run build --workspace=web
+    startCommand: npm run start --workspace=web
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: NODE_VERSION
+        value: 20
       - key: NEXT_PUBLIC_API_URL
-        value: https://voiceai-api.onrender.com
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: RENDER_EXTERNAL_URL
 
+  # 2. NestJS API (Backend)
   - type: web
-    name: voiceai-api
-    env: docker
-    plan: starter
-    dockerfilePath: apps/api/Dockerfile
+    name: voice-ai-api
+    env: node
+    buildCommand: npm install && npm run build --workspace=api
+    startCommand: npm run start:prod --workspace=api
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
+      - key: NODE_VERSION
+        value: 20
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: voice-ai-redis
+          property: connectionString
+      - key: POSTGRES_DB
         fromDatabase:
-          name: voiceai-db
-          property: connectionString
-      - key: PGSSLMODE
-        value: require
-      - key: REDIS_URL
-        fromService:
-          name: voiceai-redis
-          type: keyvalue
-          property: connectionString
-      - key: API_URL
-        value: https://voiceai-api.onrender.com
-      - key: WEB_URL
-        value: https://voiceai-web.onrender.com
-      - key: JWT_SECRET
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: S3_ACCESS_KEY
-        sync: false
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: S3_BUCKET
-        sync: false
-      - key: S3_REGION
-        sync: false
-      - key: S3_ENDPOINT
-        sync: false
-      - key: S3_PRESIGN_EXPIRY
-        value: "3600"
-      - key: AZURE_TTS_KEY
-        sync: false
-      - key: AZURE_TTS_REGION
-        sync: false
+          name: voice-ai-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: voice-ai-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: voice-ai-db
+          property: password
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: voice-ai-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: voice-ai-db
+          property: port
 
+  # 3. Python Worker (Ovoz generator)
   - type: worker
-    name: voiceai-worker
-    env: docker
-    plan: starter
-    dockerfilePath: apps/worker/Dockerfile
+    name: voice-ai-worker
+    env: python
+    buildCommand: cd apps/worker && pip install -r requirements.txt
+    startCommand: cd apps/worker && python -m uvicorn app.main:app --port $PORT --host 0.0.0.0
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
       - key: REDIS_URL
         fromService:
-          name: voiceai-redis
-          type: keyvalue
+          type: redis
+          name: voice-ai-redis
           property: connectionString
+      # Maxfiy kalitlarni Render Dashboard (Environment) dan qo'lda kiritasiz:
+      - key: AZURE_TTS_KEY
+        sync: false
+      - key: AZURE_TTS_REGION
+        sync: false
       - key: S3_ACCESS_KEY
         sync: false
       - key: S3_SECRET_KEY
@@ -75,19 +76,16 @@
         sync: false
       - key: S3_REGION
         sync: false
-      - key: S3_ENDPOINT
-        sync: false
-      - key: S3_PRESIGN_EXPIRY
-        value: "3600"
-      - key: AZURE_TTS_KEY
-        sync: false
-      - key: AZURE_TTS_REGION
-        sync: false
 
-  - type: keyvalue
-    name: voiceai-redis
-    plan: starter
+  # 4. Redis Xizmati
+  - type: redis
+    name: voice-ai-redis
+    ipAllowList: [] # faqat ichki xizmatlar kira oladi
+    plan: free
 
+# 5. PostgreSQL Baza
 databases:
-  - name: voiceai-db
-    plan: basic-256mb
+  - name: voice-ai-db
+    databaseName: voiceai
+    user: voiceai
+    plan: free
