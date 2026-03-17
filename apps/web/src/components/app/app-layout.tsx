@@ -1,0 +1,528 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import * as React from "react";
+import { CgToolbarLeft } from "react-icons/cg";
+import {
+  RiAddLine,
+  RiApps2Line,
+  RiArrowUpDownLine,
+  RiBook3Line,
+  RiFileChartLine,
+  RiFileMusicLine,
+  RiFolderLine,
+  RiFolderVideoLine,
+  RiFocus3Line,
+  RiHome5Line,
+  RiLayoutGridLine,
+  RiMenuFoldLine,
+  RiMenuUnfoldLine,
+  RiMusic2Line,
+  RiOrganizationChart,
+  RiSparkling2Line,
+  RiUserVoiceLine,
+  RiVoiceprintLine,
+} from "react-icons/ri";
+type NavItem = {
+  label: string;
+  href: string;
+  badge?: "New" | "Soon";
+  disabled?: boolean;
+  icon?: React.ReactNode;
+};
+
+const PAGE_TITLES: Record<string, string> = {
+  "/app/home": "Home",
+  "/app/voices": "Voices",
+  "/app/files": "Files",
+  "/app/studio": "Studio",
+  "/app/audiobooks": "Audiobooks",
+  "/app/flows": "Flows",
+  "/app/dubbing": "Dubbing",
+  "/app/speech-to-text": "Speech to Text",
+  "/app/sound-effects": "Sound Effects",
+  "/app/music": "Music",
+  "/app/image-video": "Image & Video",
+  "/app/templates": "Templates",
+  "/app/voice-changer": "Voice Changer",
+  "/app/voice-isolator": "Voice Isolator",
+  "/app/text-to-speech": "Text to Speech",
+};
+
+function Icon({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="grid h-5 w-5 shrink-0 place-items-center text-current transition-colors">
+      {children}
+    </span>
+  );
+}
+
+function NavSection({
+  title,
+  items,
+  collapsed = false,
+}: {
+  title?: string;
+  items: NavItem[];
+  collapsed?: boolean;
+}) {
+  const pathname = usePathname();
+  return (
+    <div className={collapsed ? "space-y-3" : "space-y-2"}>
+      {title && !collapsed ? (
+        <div className="px-1.5 text-[11px] font-medium text-neutral-500">
+          {title}
+        </div>
+      ) : null}
+      <div className="space-y-1">
+        {items.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.label : undefined}
+              aria-label={item.label}
+              className={[
+                "group relative flex items-center rounded-[10px] border border-transparent text-sm font-medium transition",
+                collapsed
+                  ? "mx-auto h-10 w-10 justify-center px-0 py-0"
+                  : "justify-between gap-3 px-2 py-1.5",
+                active
+                  ? collapsed
+                    ? "bg-white text-neutral-950 border-neutral-300 shadow-sm"
+                    : "bg-neutral-100/90 text-neutral-950 border-neutral-200"
+                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 hover:border-neutral-200",
+              ].join(" ")}
+            >
+              <span className={collapsed ? "grid h-5 w-5 place-items-center" : "flex min-w-0 items-center gap-2"}>
+                {item.icon ?? null}
+                {!collapsed ? <span className="truncate">{item.label}</span> : null}
+              </span>
+              {item.badge && !collapsed ? (
+                <span
+                  className={[
+                    "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                    item.badge === "New"
+                      ? "border-violet-200 bg-violet-50 text-violet-700"
+                      : "border-neutral-200 bg-neutral-50 text-neutral-500",
+                  ].join(" ")}
+                >
+                  {item.badge}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function AppLayout({
+  pageTitle,
+  workspace = "ElevenCreative",
+  children,
+}: {
+  pageTitle?: string;
+  workspace?: string;
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [userMenuOpen, setUserMenuOpen] = React.useState(false);
+  const [userName, setUserName] = React.useState("");
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
+  const resolvedPageTitle = pageTitle ?? PAGE_TITLES[pathname] ?? "Workspace";
+
+  React.useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (token) {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
+      fetch(`${API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.name) setUserName(data.name);
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [userMenuOpen]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    router.push("/login");
+  };
+
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : "A";
+
+  React.useEffect(() => {
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
+
+  const main: NavItem[] = [
+    {
+      label: "Home",
+      href: "/app/home",
+      icon: (
+        <Icon>
+          <RiHome5Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Voices",
+      href: "/app/voices",
+      icon: (
+        <Icon>
+          <RiApps2Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Files",
+      href: "/app/files",
+      icon: (
+        <Icon>
+          <RiFolderLine size={16} />
+        </Icon>
+      ),
+    },
+  ];
+
+  const playground: NavItem[] = [
+    {
+      label: "Text to Speech",
+      href: "/app/text-to-speech",
+      icon: (
+        <Icon>
+          <RiFileMusicLine size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Voice Changer",
+      href: "/app/voice-changer",
+      icon: (
+        <Icon>
+          <RiUserVoiceLine size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Voice Isolator",
+      href: "/app/voice-isolator",
+      icon: (
+        <Icon>
+          <RiFocus3Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Sound Effects",
+      href: "/app/sound-effects",
+      icon: (
+        <Icon>
+          <RiSparkling2Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Music",
+      href: "/app/music",
+      icon: (
+        <Icon>
+          <RiMusic2Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Image & Video",
+      href: "/app/image-video",
+      icon: (
+        <Icon>
+          <RiFolderVideoLine size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Templates",
+      href: "/app/templates",
+      icon: (
+        <Icon>
+          <RiLayoutGridLine size={16} />
+        </Icon>
+      ),
+    },
+  ];
+
+  const products: NavItem[] = [
+    {
+      label: "Studio",
+      href: "/app/studio",
+      badge: "New",
+      icon: (
+        <Icon>
+          <RiFileChartLine size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Audiobooks",
+      href: "/app/audiobooks",
+      badge: "New",
+      icon: (
+        <Icon>
+          <RiBook3Line size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Flows",
+      href: "/app/flows",
+      badge: "New",
+      icon: (
+        <Icon>
+          <RiOrganizationChart size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Dubbing",
+      href: "/app/dubbing",
+      icon: (
+        <Icon>
+          <RiUserVoiceLine size={16} />
+        </Icon>
+      ),
+    },
+    {
+      label: "Speech to Text",
+      href: "/app/speech-to-text",
+      icon: (
+        <Icon>
+          <RiVoiceprintLine size={16} />
+        </Icon>
+      ),
+    },
+  ];
+
+  return (
+    <div className="app-light h-dvh min-h-screen overflow-hidden bg-white text-neutral-900">
+      <div
+        className={[
+          "fixed left-0 top-0 z-41 hidden h-dvh border-r border-neutral-200 bg-neutral-50/90 backdrop-blur-md transition-[width] duration-200 md:block",
+          sidebarOpen ? "w-64" : "w-18",
+        ].join(" ")}
+      >
+        <aside
+          className={[
+            "flex h-full min-h-0 flex-col overflow-hidden py-3",
+            sidebarOpen ? "px-3" : "px-2",
+          ].join(" ")}
+        >
+          <div className={sidebarOpen ? "" : "flex justify-center"}>
+            <button
+              type="button"
+              onClick={() => router.push("/app/home")}
+              className={[
+                "cursor-pointer",
+                sidebarOpen
+                  ? "w-full flex-1"
+                  : "",
+              ].join(" ")}
+              title="Go to dashboard"
+            >
+              {sidebarOpen ? (
+                <Image
+                  src="/full_logo.png"
+                  alt="VoiceAI Logo"
+                  width={250}
+                  height={60}
+                  className="h-8 scale-130 relative left-2.5 w-auto cursor-pointer object-contain"
+                  priority
+                />
+              ) : (
+                <Image
+                  src="/logo.png"
+                  alt="VoiceAI Icon"
+                  width={30}
+                  height={30}
+                  className="h-8 object-contain"
+                  priority
+                />
+              )}
+            </button>
+          </div>
+
+          {/* {sidebarOpen ? (
+            <button
+              type="button"
+              className="mt-2 w-full rounded-[10px] border border-neutral-200 bg-white px-2 py-2 text-left shadow-[0_2px_4px_rgba(0,0,0,0.04)]"
+              title="Workspace switcher"
+            >
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-md border border-neutral-200 bg-neutral-100 text-xs font-semibold text-neutral-700">
+                  EC
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-neutral-950">{workspace}</div>
+                  <div className="text-[11px] text-neutral-500">Platform switcher</div>
+                </div>
+                <div className="text-neutral-500">
+                  <RiArrowUpDownLine size={16} />
+                </div>
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mx-auto mt-3 grid h-10 w-10 place-items-center rounded-[10px] border border-neutral-200 bg-white shadow-[0_2px_4px_rgba(0,0,0,0.04)]"
+              title={workspace}
+              aria-label={workspace}
+            >
+              <Image
+                src="/logo.png"
+                alt="Workspace Logo"
+                width={18}
+                height={18}
+                className="h-4.5 w-4.5 object-contain"
+              />
+            </button>
+          )} */}
+
+          <div className="mt-3 min-h-0 flex-1 overflow-hidden">
+            <div
+              className={[
+                "h-full overflow-y-auto overflow-x-hidden hide-scrollbar",
+                sidebarOpen ? "pr-1" : "pr-0",
+              ].join(" ")}
+            >
+              <div className={sidebarOpen ? "space-y-5 pb-2" : "space-y-6 pb-2"}>
+                <NavSection items={main} collapsed={!sidebarOpen} />
+                <NavSection title="Playground" items={playground} collapsed={!sidebarOpen} />
+                <NavSection title="Products" items={products} collapsed={!sidebarOpen} />
+              </div>
+            </div>
+          </div>
+
+          {sidebarOpen ? (
+            <div className="shrink-0 px-2 pt-6 text-xs text-neutral-400">
+              © {new Date().getFullYear()} VoiceAI
+            </div>
+          ) : null}
+        </aside>
+      </div>
+
+      <div className={["flex h-dvh min-h-screen", sidebarOpen ? "md:pl-64" : "md:pl-18"].join(" ")}>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur">
+            <div className="flex min-h-14 items-center justify-between gap-4 px-4 py-2 md:px-8">
+              <div className="min-w-0 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen((prev) => !prev)}
+                  className="hidden h-9 w-9 cursor-pointer place-items-center rounded-[10px] border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 md:grid"
+                  title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                  aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                >
+                  <CgToolbarLeft />
+                </button>
+                <div className="truncate text-[15px] font-semibold text-neutral-950">
+                  {resolvedPageTitle}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                  Feedback
+                </button>
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                  Docs
+                </button>
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                  Ask
+                </button>
+                <button
+                  className="grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
+                  title="Theme"
+                >
+                  <span className="text-sm">◐</span>
+                </button>
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="grid h-9 w-9 place-items-center rounded-full bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-900"
+                    title={userName || "User"}
+                  >
+                    {userInitial}
+                  </button>
+                  {userMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 rounded-lg border border-neutral-200 bg-white shadow-lg">
+                      <div className="border-b border-neutral-200 px-4 py-3">
+                        <div className="text-sm font-semibold text-neutral-950">{userName || "User"}</div>
+                        <div className="mt-0.5 text-xs text-neutral-500">Workspace</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          router.push("/app/home");
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                      >
+                        Dashboard
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="min-h-0 flex-1 overflow-hidden px-5 py-6 md:px-8">
+            {children}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+

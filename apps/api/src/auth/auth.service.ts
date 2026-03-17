@@ -44,7 +44,9 @@ export class AuthService {
   }
 
   async register(payload: { name?: string; email: string; password: string }) {
-    const email = String(payload.email ?? '').toLowerCase().trim();
+    const email = String(payload.email ?? '')
+      .toLowerCase()
+      .trim();
     const password = String(payload.password ?? '');
     const name = String(payload.name ?? '').trim() || null;
 
@@ -72,7 +74,9 @@ export class AuthService {
   }
 
   async login(payload: { email: string; password: string }) {
-    const email = String(payload.email ?? '').toLowerCase().trim();
+    const email = String(payload.email ?? '')
+      .toLowerCase()
+      .trim();
     const password = String(payload.password ?? '');
     if (!email || !password) {
       throw new BadRequestException('Email and password required');
@@ -99,7 +103,7 @@ export class AuthService {
     return { token: this.signToken(user), user: this.toUser(user) };
   }
 
-  async me(token: string) {
+  me(token: string) {
     try {
       const data = jwt.verify(token, this.jwtSecret()) as {
         sub: string;

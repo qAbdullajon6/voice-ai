@@ -6,100 +6,80 @@ import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
 
-const navItems = [
-  { label: "Home", href: "/dashboard" },
-  { label: "Voices", href: "/dashboard#voices" },
-  { label: "Files", href: "/dashboard#files" },
-];
-
-const playgroundItems = [
-  { label: "Text to Speech", href: "/tts" },
-  { label: "Voice Changer", href: "/dashboard#voice-changer", disabled: true },
-  { label: "Voice Isolator", href: "/dashboard#voice-isolator", disabled: true },
-  { label: "Sound Effects", href: "/dashboard#sound-effects", disabled: true },
-  { label: "Music", href: "/dashboard#music", disabled: true },
-  { label: "Image & Video", href: "/dashboard#image-video", disabled: true },
-  { label: "Templates", href: "/dashboard#templates", disabled: true },
-];
-
-const productItems = [
-  { label: "Studio", href: "/dashboard#studio", badge: "New", disabled: true },
-  { label: "Audiobooks", href: "/dashboard#audiobooks", badge: "New", disabled: true },
-  { label: "Flows", href: "/dashboard#flows", badge: "New", disabled: true },
-  { label: "Dubbing", href: "/dashboard#dubbing", disabled: true },
-  { label: "Speech to Text", href: "/dashboard#stt", disabled: true },
-];
+type RecentFile = {
+  id: string;
+  text: string;
+  voice_id: string | null;
+  status: string;
+  created_at: string;
+  audio_url: string | null;
+};
 
 const quickLaunch = [
   {
     title: "Instant speech",
     desc: "Generate TTS from text",
-    href: "/tts",
-    accent: "from-violet-500 to-purple-600",
+    href: "/app/text-to-speech",
+    icon: "✦",
   },
   {
     title: "Audiobook",
     desc: "Long-form narration workflow",
-    href: "/dashboard#audiobook",
-    accent: "from-rose-500 to-orange-500",
+    href: "/app/audiobooks",
     disabled: true,
+    icon: "≋",
   },
   {
     title: "Image & Video",
     desc: "Script audio for visuals",
-    href: "/dashboard#image-video",
-    accent: "from-emerald-500 to-teal-500",
+    href: "/dashboard/image-video",
     disabled: true,
-  },
-  {
-    title: "Voice Agents",
-    desc: "Agentic conversational flows",
-    href: "/dashboard#agents",
-    accent: "from-blue-500 to-cyan-500",
-    disabled: true,
+    icon: "▦",
   },
   {
     title: "Music",
     desc: "Generate music beds",
-    href: "/dashboard#music",
-    accent: "from-amber-500 to-yellow-500",
+    href: "/app/music",
     disabled: true,
+    icon: "♫",
   },
   {
     title: "Dubbed video",
     desc: "Localize media at scale",
-    href: "/dashboard#dubbing",
-    accent: "from-fuchsia-500 to-pink-500",
+    href: "/app/dubbing",
     disabled: true,
+    icon: "⫷⫸",
   },
 ];
 
-const projects = [
+const latestFromLibrary = [
   {
-    name: "Product intro v1",
-    category: "Text to Speech",
-    updated: "2 hours ago",
+    title: "Grandma Rachel - Wise Southern Senior",
+    subtitle: "Grandma Rachel • Old Lady Storyteller • Narrator",
   },
   {
-    name: "Podcast trailer",
-    category: "Audiobook",
-    updated: "Yesterday",
+    title: "Dr. Lovejoy - Soft Whispering ASMR",
+    subtitle: "Dr. Lovejoy • Pro Whisper ASMR",
   },
   {
-    name: "Uzbek ad spot",
-    category: "Instant speech",
-    updated: "3 days ago",
-  },
-  {
-    name: "Mobile app onboarding",
-    category: "Voice design",
-    updated: "Last week",
+    title: "David Castlemore - Newsreader and Educator",
+    subtitle: "David Castlemore • Newsreader",
   },
 ];
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 export default function DashboardPage() {
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
+  const [userName, setUserName] = useState<string>("");
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const [authToken, setAuthToken] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -108,11 +88,18 @@ export default function DashboardPage() {
       return;
     }
 
+    // avoid setState-in-effect lint; token is stable per mount
+    queueMicrotask(() => setAuthToken(token));
+
     fetch(`${API_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) throw new Error("Unauthorized");
+        const data = await res.json().catch(() => null);
+        if (data?.name && typeof data.name === "string") {
+          setUserName(data.name);
+        }
         setAuthReady(true);
       })
       .catch(() => {
@@ -121,10 +108,30 @@ export default function DashboardPage() {
       });
   }, [router]);
 
+  useEffect(() => {
+    if (!authToken || !authReady) return;
+
+    const url = new URL(`${API_URL}/tts/history`);
+    url.searchParams.set("limit", "3");
+
+    fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.items) {
+          setRecentFiles(data.items.slice(0, 3));
+        }
+      })
+      .catch(() => {
+        // Silently fail for dashboard, don't break page
+      });
+  }, [authToken, authReady]);
+
   if (!authReady) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-[#0a0b0d] via-[#0f1117] to-[#0a0b0d] text-white">
-        <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
+      <div className="min-h-screen bg-white">
+        <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
           Checking access...
         </div>
       </div>
@@ -132,208 +139,135 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f6f7] text-[#111318]">
-      <div className="flex min-h-screen">
-        <aside className="w-[260px] border-r border-[#ececf0] bg-white px-4 py-6">
-          <div className="mb-6 flex items-center gap-2 text-lg font-semibold">
-            <span className="h-9 w-9 rounded-xl bg-[#111318] text-white grid place-items-center">
-              V
-            </span>
-            VoiceAI
-          </div>
+    <div className="space-y-8">
+        <div>
+          <div className="text-sm text-neutral-500">My Workspace</div>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-neutral-950">
+            {userName ? `${getGreeting()}, ${userName}` : getGreeting()}
+          </h1>
+        </div>
 
-          <div className="mb-6 rounded-2xl border border-[#ececf0] px-3 py-2">
-            <div className="text-xs text-[#7a7f89]">Workspace</div>
-            <div className="flex items-center justify-between text-sm font-medium">
-              ElevenCreative
-              <span className="text-[#7a7f89]">?</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9aa0aa]">
-                Main
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {quickLaunch.map((item) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              onClick={(e) => {
+                if (item.disabled) e.preventDefault();
+              }}
+              className={[
+                "group rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+                item.disabled ? "cursor-not-allowed opacity-60 hover:translate-y-0" : "",
+              ].join(" ")}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="grid h-11 w-11 place-items-center rounded-xl border border-neutral-200 bg-neutral-50 text-lg text-neutral-900">
+                  {item.icon}
+                </div>
+                {item.disabled ? (
+                  <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">
+                    Soon
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                    Launch
+                  </span>
+                )}
               </div>
-              <div className="space-y-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-[#2a2f36] hover:bg-[#f4f4f6]"
-                  >
-                    <span className="h-2 w-2 rounded-full bg-[#c9ccd3]" />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
+              <div className="mt-4 text-sm font-semibold text-neutral-950">{item.title}</div>
+              <div className="mt-1 text-xs text-neutral-500">{item.desc}</div>
+            </Link>
+          ))}
+        </div>
 
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9aa0aa]">
-                Playground
+        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+          <section className="rounded-2xl border border-neutral-200 bg-white p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-neutral-950">
+                {recentFiles.length > 0 ? "Recent Generations" : "No Generations Yet"}
               </div>
-              <div className="space-y-1">
-                {playgroundItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium ${
-                      item.disabled
-                        ? "text-[#b6bac3] cursor-not-allowed"
-                        : "text-[#2a2f36] hover:bg-[#f4f4f6]"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {item.disabled ? (
-                      <span className="rounded-full bg-[#eef0f4] px-2 py-0.5 text-[10px] text-[#9aa0aa]">
-                        Soon
-                      </span>
-                    ) : null}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9aa0aa]">
-                Products
-              </div>
-              <div className="space-y-1">
-                {productItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={`flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium ${
-                      item.disabled
-                        ? "text-[#b6bac3] cursor-not-allowed"
-                        : "text-[#2a2f36] hover:bg-[#f4f4f6]"
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {item.badge ? (
-                      <span className="rounded-full bg-[#eef0f4] px-2 py-0.5 text-[10px] text-[#6f7581]">
-                        {item.badge}
-                      </span>
-                    ) : null}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="flex-1">
-          <header className="flex items-center justify-between border-b border-[#ececf0] bg-white px-8 py-4">
-            <div className="text-sm font-semibold">Home</div>
-            <div className="flex items-center gap-3">
-              <button className="rounded-full border border-[#ececf0] px-4 py-2 text-xs font-medium">
-                Feedback
-              </button>
-              <button className="rounded-full border border-[#ececf0] px-4 py-2 text-xs font-medium">
-                Docs
-              </button>
-              <button className="rounded-full border border-[#ececf0] px-4 py-2 text-xs font-medium">
-                Ask
-              </button>
-              <div className="h-9 w-9 rounded-full bg-[#111318] text-white grid place-items-center text-xs">
-                A
-              </div>
-            </div>
-          </header>
-
-          <section className="px-8 py-8">
-            <div className="mb-6 flex items-center gap-3">
-              <span className="rounded-full bg-[#111318] px-3 py-1 text-xs font-medium text-white">
-                New
-              </span>
-              <span className="text-sm text-[#4c515b]">
-                Introducing Flows
-              </span>
-            </div>
-
-            <div className="mb-8">
-              <p className="text-sm text-[#7a7f89]">My Workspace</p>
-              <h1 className="text-3xl font-semibold">Good morning, Boy</h1>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {quickLaunch.map((item) => (
-                <Link
-                  key={item.title}
-                  href={item.href}
-                  className={`group flex min-h-[160px] flex-col justify-between rounded-3xl border border-[#ececf0] bg-white p-5 shadow-sm transition ${
-                    item.disabled
-                      ? "cursor-not-allowed opacity-60"
-                      : "hover:-translate-y-1 hover:shadow-lg"
-                  }`}
-                >
-                  <div
-                    className={`h-12 w-12 rounded-2xl bg-linear-to-br ${item.accent} text-white grid place-items-center text-lg font-semibold`}
-                  >
-                    ?
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold">{item.title}</div>
-                    <div className="text-xs text-[#7a7f89]">{item.desc}</div>
-                  </div>
+              {recentFiles.length > 0 && (
+                <Link href="/app/files" className="text-xs font-semibold text-violet-700 hover:text-violet-800">
+                  See all →
                 </Link>
+              )}
+            </div>
+            {recentFiles.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {recentFiles.map((file) => (
+                  <button
+                    key={file.id}
+                    onClick={() => router.push(`/app/text-to-speech?voice=${file.voice_id || ""}&text=${encodeURIComponent(file.text || "")}`)}
+                    className="w-full rounded-xl border border-neutral-200 bg-white p-3 text-left hover:bg-neutral-50 transition"
+                  >
+                    <div className="truncate text-sm font-semibold text-neutral-950">
+                      {file.text || "Untitled"}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-neutral-500">
+                      <span
+                        className={`rounded-full px-2 py-0.5 ${
+                          file.status === "done"
+                            ? "border border-green-200 bg-green-50 text-green-700"
+                            : file.status === "processing"
+                              ? "border border-blue-200 bg-blue-50 text-blue-700"
+                              : "border border-red-200 bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {file.status}
+                      </span>
+                      <span>•</span>
+                      <span>{new Date(file.created_at).toLocaleString()}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-dashed border-neutral-200 bg-neutral-50 p-6 text-center">
+                <div className="text-sm text-neutral-600">
+                  Generate your first TTS clip to get started
+                </div>
+                <Link
+                  href="/app/text-to-speech"
+                  className="mt-3 inline-block rounded-lg bg-neutral-950 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-900"
+                >
+                  Generate Now
+                </Link>
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-neutral-200 bg-white p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-neutral-950">
+                Featured Voices
+              </div>
+              <Link href="/app/voices" className="text-xs font-semibold text-violet-700 hover:text-violet-800">
+                Browse all →
+              </Link>
+            </div>
+            <div className="mt-4 space-y-3">
+              {latestFromLibrary.map((v) => (
+                <button
+                  key={v.title}
+                  onClick={() => router.push("/app/voices")}
+                  className="w-full text-left rounded-xl border border-neutral-200 bg-white p-3 hover:bg-neutral-50 transition"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 h-8 w-8 rounded-full bg-neutral-200 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-neutral-950">
+                        {v.title}
+                      </div>
+                      <div className="truncate text-xs text-neutral-500">
+                        {v.subtitle}
+                      </div>
+                    </div>
+                  </div>
+                </button>
               ))}
             </div>
-
-            <div className="mt-10 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-              <div className="rounded-3xl border border-[#ececf0] bg-white p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Recent projects</h2>
-                  <button className="text-xs font-medium text-[#7a7f89]">
-                    View all
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  {projects.map((project) => (
-                    <div
-                      key={project.name}
-                      className="flex items-center justify-between rounded-2xl border border-[#f0f1f4] px-4 py-3"
-                    >
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {project.name}
-                        </div>
-                        <div className="text-xs text-[#7a7f89]">
-                          {project.category}
-                        </div>
-                      </div>
-                      <div className="text-xs text-[#9aa0aa]">
-                        {project.updated}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-[#ececf0] bg-white p-6">
-                <h2 className="mb-4 text-lg font-semibold">
-                  Create or clone a voice
-                </h2>
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-[#f0f1f4] p-4">
-                    <div className="text-sm font-semibold">Voice Design</div>
-                    <div className="text-xs text-[#7a7f89]">
-                      Design a new voice from a text prompt.
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[#f0f1f4] p-4">
-                    <div className="text-sm font-semibold">Clone your voice</div>
-                    <div className="text-xs text-[#7a7f89]">
-                      Create a realistic digital clone of your voice.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </section>
-        </main>
+        </div>
       </div>
-    </div>
   );
 }

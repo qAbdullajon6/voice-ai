@@ -1,18 +1,28 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TtsQueue, TtsJob } from './tts.queue';
+import { pool } from '../db';
 
 type TtsRequest = {
   text: string;
   voice?: string;
   output_format?: string;
+  model_id?: string;
+  settings?: Record<string, unknown>;
 };
 
 @Injectable()
 export class TtsService {
   private readonly queue = new TtsQueue();
 
-  async generate(payload: TtsRequest) {
+  async preview(userId: string, payload: TtsRequest) {
+    return this.generate(userId, {
+      ...payload,
+      settings: { ...(payload.settings ?? {}), preview: true },
+    });
+  }
+
+  async generate(userId: string, payload: TtsRequest) {
     if (!payload?.text || !payload.text.trim()) {
       throw new BadRequestException('text is required');
     }
@@ -26,11 +36,163 @@ export class TtsService {
       created_at: now,
       updated_at: now,
     };
+
+    await pool.query(
+      `
+      INSERT INTO tts_generations
+        (id, user_id, text, voice_id, model_id, output_format, settings, status, created_at, updated_at)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::timestamptz, $9::timestamptz)
+      `,
+      [
+        job.id,
+        userId,
+        payload.text,
+        payload.voice ?? null,
+        payload.model_id ?? null,
+        payload.output_format ?? null,
+        JSON.stringify(payload.settings ?? {}),
+        job.status,
+        now,
+      ],
+    );
+
     await this.queue.enqueue(job);
     return { id: job.id, status: job.status };
   }
 
-  async getJob(id: string) {
-    return this.queue.getJob(id);
+  async getJob(userId: string, id: string) {
+    const redisJob = await this.queue.getJob(id);
+    const dbRes = await pool.query<{
+      id: string;
+      user_id: string;
+      text: string;
+      voice_id: string | null;
+      model_id: string | null;
+      output_format: string | null;
+      settings: unknown;
+      status: string;
+      audio_url: string | null;
+      error: string | null;
+      created_at: string;
+      updated_at: string;
+    }>('SELECT * FROM tts_generations WHERE id = $1 AND user_id = $2', [
+      id,
+      userId,
+    ]);
+    const dbRow = dbRes.rowCount ? dbRes.rows[0] : null;
+
+    if (!redisJob && !dbRow) return null;
+
+    // If worker has updated Redis to a final state, persist it in DB.
+    if (redisJob && dbRow) {
+      const final =
+        redisJob.status === 'done' ||
+        redisJob.status === 'failed' ||
+        redisJob.status === 'processing';
+      if (final && dbRow.status !== redisJob.status) {
+        await pool.query(
+          'UPDATE tts_generations SET status = $1, audio_url = $2, error = $3, updated_at = now() WHERE id = $4 AND user_id = $5',
+          [
+            redisJob.status,
+            redisJob.url ?? null,
+            redisJob.error ?? null,
+            id,
+            userId,
+          ],
+        );
+      }
+    }
+
+    return {
+      id,
+      text: dbRow?.text ?? redisJob?.text,
+      voice: dbRow?.voice_id ?? redisJob?.voice,
+      model_id: dbRow?.model_id ?? null,
+      output_format: dbRow?.output_format ?? redisJob?.output_format,
+      settings: dbRow?.settings ?? {},
+      status: (redisJob?.status ?? dbRow?.status) as
+        | 'queued'
+        | 'processing'
+        | 'done'
+        | 'failed',
+      url: redisJob?.url ?? dbRow?.audio_url ?? undefined,
+      error: redisJob?.error ?? dbRow?.error ?? undefined,
+      created_at: redisJob?.created_at ?? dbRow?.created_at,
+      updated_at: redisJob?.updated_at ?? dbRow?.updated_at,
+    };
+  }
+
+  async history(userId: string, limit: number, cursor?: string) {
+    const safeLimit = Math.max(1, Math.min(50, limit || 20));
+    let after: { created_at: string; id: string } | null = null;
+    if (cursor) {
+      try {
+        const parsed: unknown = JSON.parse(
+          Buffer.from(cursor, 'base64url').toString(),
+        );
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'created_at' in parsed &&
+          'id' in parsed &&
+          typeof (parsed as Record<string, unknown>).created_at === 'string' &&
+          typeof (parsed as Record<string, unknown>).id === 'string'
+        ) {
+          after = parsed as { created_at: string; id: string };
+        } else {
+          after = null;
+        }
+      } catch {
+        after = null;
+      }
+    }
+
+    const params: Array<string | number> = [userId, safeLimit];
+    let where =
+      "WHERE user_id = $1 AND COALESCE((settings->>'preview')::boolean, false) = false";
+    if (after?.created_at && after?.id) {
+      params.push(after.created_at, after.id);
+      where += ' AND (created_at, id) < ($3::timestamptz, $4::uuid)';
+    }
+
+    const res = await pool.query<{
+      id: string;
+      text: string;
+      voice_id: string | null;
+      model_id: string | null;
+      output_format: string | null;
+      settings: unknown;
+      status: string;
+      audio_url: string | null;
+      error: string | null;
+      created_at: string;
+      updated_at: string;
+    }>(
+      `
+      SELECT id, text, voice_id, model_id, output_format, settings, status, audio_url, error, created_at, updated_at
+      FROM tts_generations
+      ${where}
+      ORDER BY created_at DESC, id DESC
+      LIMIT $2
+      `,
+      params,
+    );
+
+    const items = res.rows;
+    const next =
+      items.length === safeLimit
+        ? (() => {
+            const last = items[items.length - 1];
+            return Buffer.from(
+              JSON.stringify({
+                created_at: last.created_at,
+                id: last.id,
+              }),
+            ).toString('base64url');
+          })()
+        : null;
+
+    return { items, nextCursor: next };
   }
 }

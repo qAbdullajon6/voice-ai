@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
@@ -34,14 +26,17 @@ export class AuthController {
   }
 
   @Get('me')
-  async me(@Req() req: Request) {
+  me(@Req() req: Request) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
     return this.authService.me(token);
   }
 
   @Get('google')
-  async google(@Query('redirect') redirect: string | undefined, @Res() res: Response) {
+  google(
+    @Query('redirect') redirect: string | undefined,
+    @Res() res: Response,
+  ) {
     const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
     if (!clientId) {
       return res.status(500).json({ error: 'Google OAuth not configured' });
@@ -74,9 +69,16 @@ export class AuthController {
     let redirectUrl = process.env.WEB_URL || 'http://localhost:3000';
     if (state) {
       try {
-        const parsed = JSON.parse(Buffer.from(state, 'base64url').toString());
-        if (parsed?.redirect) {
-          redirectUrl = String(parsed.redirect);
+        const parsed: unknown = JSON.parse(
+          Buffer.from(state, 'base64url').toString(),
+        );
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'redirect' in parsed &&
+          typeof (parsed as { redirect?: unknown }).redirect === 'string'
+        ) {
+          redirectUrl = (parsed as { redirect: string }).redirect;
         }
       } catch {
         // ignore bad state

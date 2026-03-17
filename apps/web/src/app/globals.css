@@ -6,6 +6,20 @@
   --muted: #a9b1bd;
   --card: #12161c;
   --border: #1c2330;
+
+  /* App (dashboard) light tokens */
+  --app-bg: #ffffff;
+  --app-fg: #0a0a0a;
+  --app-muted: #525252;
+  --app-card: #ffffff;
+  --app-border: #e5e5e5;
+  --app-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.04);
+  --app-shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+.app-light {
+  background: var(--app-bg);
+  color: var(--app-fg);
 }
 
 @theme inline {
@@ -19,4 +33,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
