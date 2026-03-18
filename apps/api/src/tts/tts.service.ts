@@ -65,8 +65,17 @@ export class TtsService {
       );
     } catch (err) {
       this.logger.error('Database error in TTS generate', err);
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? String((err as { code: string }).code)
+          : '';
+      if (code === '23503') {
+        throw new BadRequestException(
+          'Foydalanuvchi bazada topilmadi. Qayta tizimga kiring (logout / login).',
+        );
+      }
       throw new ServiceUnavailableException(
-        'Database unavailable. Check POSTGRES_* / DATABASE_URL and that migrations have run.',
+        'Database unavailable. Render da DATABASE_URL (Internal Database URL) qo‘shing yoki POSTGRES_* va SSL ni tekshiring.',
       );
     }
 

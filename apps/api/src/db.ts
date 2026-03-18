@@ -4,14 +4,37 @@ import { resolve } from 'path';
 
 loadEnv({ path: resolve(__dirname, '..', '..', '..', '.env') });
 
-const connectionString = process.env.DATABASE_URL;
-const sslRequired =
-  process.env.PGSSLMODE === 'require' || process.env.NODE_ENV === 'production';
+function resolveConnectionString(): string | null {
+  const direct = process.env.DATABASE_URL?.trim();
+  if (direct) return direct;
+
+  const host = process.env.POSTGRES_HOST?.trim();
+  const user = process.env.POSTGRES_USER?.trim();
+  const password = process.env.POSTGRES_PASSWORD ?? '';
+  const port = process.env.POSTGRES_PORT ?? '5432';
+  const database = process.env.POSTGRES_DB?.trim();
+  if (host && user && database) {
+    const u = encodeURIComponent(user);
+    const p = encodeURIComponent(String(password));
+    return `postgresql://${u}:${p}@${host}:${port}/${database}?sslmode=require`;
+  }
+  return null;
+}
+
+const isProduction =
+  process.env.NODE_ENV === 'production' ||
+  process.env.RENDER === 'true' ||
+  process.env.PGSSLMODE === 'require';
+
+const connectionString = resolveConnectionString();
 
 const pool = connectionString
   ? new Pool({
       connectionString,
-      ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+      ssl: isProduction ? { rejectUnauthorized: false } : undefined,
     })
   : new Pool({
       host: process.env.POSTGRES_HOST ?? '127.0.0.1',
@@ -19,7 +42,8 @@ const pool = connectionString
       user: process.env.POSTGRES_USER ?? 'postgres',
       password: process.env.POSTGRES_PASSWORD ?? 'password',
       database: process.env.POSTGRES_DB ?? 'voiceai',
-      ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
+      max: 10,
+      ssl: isProduction ? { rejectUnauthorized: false } : undefined,
     });
 
 export async function initDb() {
