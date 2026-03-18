@@ -6,6 +6,26 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  private getApiBaseUrl(req?: Request): string {
+    const configured =
+      process.env.API_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();
+    if (configured) {
+      return configured.replace(/\/+$/, '');
+    }
+
+    if (req) {
+      const forwardedHost = req.header('x-forwarded-host') ?? req.header('host');
+      const forwardedProtoRaw = req.header('x-forwarded-proto');
+      const forwardedProto = forwardedProtoRaw?.split(',')[0]?.trim();
+      const protocol = forwardedProto || req.protocol || 'http';
+      if (forwardedHost) {
+        return `${protocol}://${forwardedHost}`;
+      }
+    }
+
+    return 'http://127.0.0.1:4000';
+  }
+
   @Post('register')
   async register(
     @Body() body: { name?: string; email?: string; password?: string },
@@ -34,6 +54,7 @@ export class AuthController {
 
   @Get('google')
   google(
+    @Req() req: Request,
     @Query('redirect') redirect: string | undefined,
     @Res() res: Response,
   ) {
@@ -41,7 +62,7 @@ export class AuthController {
     if (!clientId) {
       return res.status(500).json({ error: 'Google OAuth not configured' });
     }
-    const baseUrl = process.env.API_URL ?? 'http://127.0.0.1:4000';
+    const baseUrl = this.getApiBaseUrl(req);
     const redirectUri = `${baseUrl}/auth/google/callback`;
     const webUrl = redirect || process.env.WEB_URL || 'http://localhost:3000';
 
@@ -62,6 +83,7 @@ export class AuthController {
 
   @Get('google/callback')
   async googleCallback(
+    @Req() req: Request,
     @Query('code') code: string | undefined,
     @Query('state') state: string | undefined,
     @Res() res: Response,
@@ -89,7 +111,7 @@ export class AuthController {
       return res.redirect(`${redirectUrl}/login?error=missing_code`);
     }
 
-    const baseUrl = process.env.API_URL ?? 'http://127.0.0.1:4000';
+    const baseUrl = this.getApiBaseUrl(req);
     const redirectUri = `${baseUrl}/auth/google/callback`;
     const tokens = await this.authService.exchangeGoogleCode(code, redirectUri);
     if (!tokens.id_token) {

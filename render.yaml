@@ -25,6 +25,16 @@ services:
         value: 20
       - key: NODE_ENV
         value: production
+      - key: API_URL
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: WEB_URL
+        fromService:
+          type: web
+          name: voice-ai-web
+          envVarKey: RENDER_EXTERNAL_URL
       # To'liq ulanish — Render Postgres uchun eng ishonchli usul
       - key: DATABASE_URL
         fromDatabase:
