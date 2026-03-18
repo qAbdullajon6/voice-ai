@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { TtsQueue, TtsJob } from './tts.queue';
 import { pool } from '../db';
@@ -13,6 +18,7 @@ type TtsRequest = {
 
 @Injectable()
 export class TtsService {
+  private readonly logger = new Logger(TtsService.name);
   private readonly queue = new TtsQueue();
 
   async preview(userId: string, payload: TtsRequest) {
@@ -37,27 +43,42 @@ export class TtsService {
       updated_at: now,
     };
 
-    await pool.query(
-      `
+    try {
+      await pool.query(
+        `
       INSERT INTO tts_generations
         (id, user_id, text, voice_id, model_id, output_format, settings, status, created_at, updated_at)
       VALUES
         ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::timestamptz, $9::timestamptz)
       `,
-      [
-        job.id,
-        userId,
-        payload.text,
-        payload.voice ?? null,
-        payload.model_id ?? null,
-        payload.output_format ?? null,
-        JSON.stringify(payload.settings ?? {}),
-        job.status,
-        now,
-      ],
-    );
+        [
+          job.id,
+          userId,
+          payload.text,
+          payload.voice ?? null,
+          payload.model_id ?? null,
+          payload.output_format ?? null,
+          JSON.stringify(payload.settings ?? {}),
+          job.status,
+          now,
+        ],
+      );
+    } catch (err) {
+      this.logger.error('Database error in TTS generate', err);
+      throw new ServiceUnavailableException(
+        'Database unavailable. Check POSTGRES_* / DATABASE_URL and that migrations have run.',
+      );
+    }
 
-    await this.queue.enqueue(job);
+    try {
+      await this.queue.enqueue(job);
+    } catch (err) {
+      this.logger.error('Redis/queue error in TTS generate', err);
+      throw new ServiceUnavailableException(
+        'Queue unavailable. Check REDIS_URL and that Redis is running.',
+      );
+    }
+
     return { id: job.id, status: job.status };
   }
 

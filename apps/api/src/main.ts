@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { config as loadEnv } from 'dotenv';
 import { join, resolve } from 'path';
 import { initDb } from './db';
+import { AllExceptionsFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   loadEnv({ path: join(process.cwd(), '.env') });
@@ -13,6 +14,7 @@ async function bootstrap() {
   await initDb();
 
   const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new AllExceptionsFilter());
   const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
   const extraOrigins =
     process.env.CORS_ORIGINS?.split(',').map((v) => v.trim()) ?? [];

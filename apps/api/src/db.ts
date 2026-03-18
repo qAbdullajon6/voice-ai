@@ -19,6 +19,7 @@ const pool = connectionString
       user: process.env.POSTGRES_USER ?? 'postgres',
       password: process.env.POSTGRES_PASSWORD ?? 'password',
       database: process.env.POSTGRES_DB ?? 'voiceai',
+      ssl: sslRequired ? { rejectUnauthorized: false } : undefined,
     });
 
 export async function initDb() {
