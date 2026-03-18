@@ -7,8 +7,16 @@ load_dotenv(find_dotenv())
 
 
 class Settings(BaseModel):
-    azure_tts_key: str = os.getenv("AZURE_TTS_KEY", "")
-    azure_tts_region: str = os.getenv("AZURE_TTS_REGION", "")
+    azure_tts_key: str = (
+        os.getenv("AZURE_TTS_KEY")
+        or os.getenv("AZURE_SPEECH_KEY")
+        or ""
+    )
+    azure_tts_region: str = (
+        os.getenv("AZURE_TTS_REGION")
+        or os.getenv("AZURE_SPEECH_REGION")
+        or ""
+    )
 
     s3_access_key: str = os.getenv("S3_ACCESS_KEY", "")
     s3_secret_key: str = os.getenv("S3_SECRET_KEY", "")

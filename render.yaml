@@ -71,7 +71,7 @@ services:
     name: voice-ai-worker
     env: python
     buildCommand: cd apps/worker && pip install -r requirements.txt
-    startCommand: cd apps/worker && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+    startCommand: cd apps/worker && python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.13
@@ -80,19 +80,42 @@ services:
           type: redis
           name: voice-ai-redis
           property: connectionString
-      # Maxfiy kalitlarni Render Dashboard (Environment) dan qo'lda kiritasiz:
+      # API service'da bir marta saqlangan maxfiy kalitlarni workerga ulash:
       - key: AZURE_TTS_KEY
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: AZURE_TTS_KEY
       - key: AZURE_TTS_REGION
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: AZURE_TTS_REGION
       - key: S3_ACCESS_KEY
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: S3_ACCESS_KEY
       - key: S3_SECRET_KEY
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: S3_SECRET_KEY
       - key: S3_BUCKET
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: S3_BUCKET
       - key: S3_REGION
-        sync: false
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: S3_REGION
+      - key: S3_ENDPOINT
+        fromService:
+          type: web
+          name: voice-ai-api
+          envVarKey: S3_ENDPOINT
 
   # 4. Redis Xizmati
   - type: redis
