@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { ThemeToggle } from "../theme-provider";
+import { MiniPlayerRoot } from "./mini-player-store";
 import { CgToolbarLeft } from "react-icons/cg";
 import {
   RiAddLine,
@@ -178,6 +179,7 @@ export function AppLayout({
   };
 
   const userInitial = userName ? userName.charAt(0).toUpperCase() : "A";
+  const sidebarWidth = sidebarOpen ? "16rem" : "4.5rem";
 
   React.useEffect(() => {
     const prevHtmlOverflow = document.documentElement.style.overflow;
@@ -338,7 +340,10 @@ export function AppLayout({
   ];
 
   return (
-    <div className="app-light h-dvh min-h-screen overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+    <div
+      className="app-light h-dvh min-h-screen overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100"
+      style={{ ["--eleven-sidebar-width" as string]: sidebarWidth }}
+    >
       <div
         className={[
           "fixed left-0 top-0 z-41 hidden h-dvh border-r border-neutral-200 bg-neutral-50/90 backdrop-blur-md transition-[width] duration-200 dark:border-neutral-800 dark:bg-neutral-900/95 md:block",
@@ -445,7 +450,7 @@ export function AppLayout({
       </div>
 
       <div className={["flex h-dvh min-h-screen", sidebarOpen ? "md:pl-64" : "md:pl-18"].join(" ")}>
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="relative flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
             <div className="flex min-h-14 items-center justify-between gap-4 px-4 py-2 md:px-8">
               <div className="min-w-0 flex items-center gap-3">
@@ -516,6 +521,7 @@ export function AppLayout({
           <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 md:px-8">
             {children}
           </main>
+          <MiniPlayerRoot />
         </div>
       </div>
     </div>

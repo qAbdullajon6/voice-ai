@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { pool } from '../db';
 
 export type AzureVoice = {
   Name: string;
@@ -20,6 +21,18 @@ type Cached = { expiresAt: number; voices: AzureVoice[] };
 @Injectable()
 export class VoicesService {
   private cache: Cached | null = null;
+
+  async latestLibraryPreviews(limit = 5) {
+    const n = Number.isFinite(limit) ? Math.max(1, Math.min(20, Math.floor(limit))) : 5;
+    const res = await pool.query(
+      `SELECT id, title, subtitle, audio_url, hue, rotate, created_at
+       FROM library_voice_previews
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [n],
+    );
+    return { items: res.rows, total: res.rowCount };
+  }
 
   async list(params?: {
     locale?: string;

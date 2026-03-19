@@ -5,6 +5,12 @@ import { VoicesService } from './voices.service';
 export class VoicesController {
   constructor(private readonly voicesService: VoicesService) {}
 
+  @Get('library/latest')
+  async latestLibrary(@Query('limit') limit?: string) {
+    const n = limit ? Number(limit) : 5;
+    return this.voicesService.latestLibraryPreviews(n);
+  }
+
   @Get()
   async list(
     @Query('locale') locale: string | undefined,

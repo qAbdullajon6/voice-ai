@@ -1,10 +1,23 @@
-import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private deviceInfoFromReq(req: Request) {
+    const userAgent = req.header('user-agent') ?? null;
+    const platform =
+      req.header('x-platform') ?? req.header('sec-ch-ua-platform') ?? null;
+    const name = req.header('x-device-name') ?? null;
+
+    const forwarded = req.header('x-forwarded-for');
+    const ip =
+      (forwarded ? forwarded.split(',')[0]?.trim() : null) ?? req.ip ?? null;
+
+    return { name, platform, userAgent, ip };
+  }
 
   private getApiBaseUrl(req?: Request): string {
     const configured =
@@ -28,28 +41,59 @@ export class AuthController {
 
   @Post('register')
   async register(
+    @Req() req: Request,
     @Body() body: { name?: string; email?: string; password?: string },
   ) {
     return this.authService.register({
       name: body.name,
       email: String(body.email ?? ''),
       password: String(body.password ?? ''),
-    });
+    }, this.deviceInfoFromReq(req));
   }
 
   @Post('login')
-  async login(@Body() body: { email?: string; password?: string }) {
+  async login(@Req() req: Request, @Body() body: { email?: string; password?: string }) {
     return this.authService.login({
       email: String(body.email ?? ''),
       password: String(body.password ?? ''),
-    });
+    }, this.deviceInfoFromReq(req));
   }
 
   @Get('me')
-  me(@Req() req: Request) {
+  async me(@Req() req: Request) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
     return this.authService.me(token);
+  }
+
+  @Post('refresh')
+  async refresh(@Body() body: { refreshToken?: string }) {
+    return this.authService.refresh(String(body.refreshToken ?? ''));
+  }
+
+  @Post('logout')
+  async logout(@Req() req: Request) {
+    const auth = req.headers.authorization ?? '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const user = await this.authService.me(token);
+    await this.authService.revokeDevice(user.id, user.deviceId);
+    return { ok: true };
+  }
+
+  @Get('devices')
+  async devices(@Req() req: Request) {
+    const auth = req.headers.authorization ?? '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const user = await this.authService.me(token);
+    return this.authService.listDevices(user.id);
+  }
+
+  @Post('devices/:id/revoke')
+  async revokeDevice(@Req() req: Request, @Param('id') id: string) {
+    const auth = req.headers.authorization ?? '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    const user = await this.authService.me(token);
+    return this.authService.revokeDevice(user.id, id);
   }
 
   @Get('google')
@@ -120,9 +164,12 @@ export class AuthController {
 
     const profile = await this.authService.getGoogleProfile(tokens.id_token);
     const user = await this.authService.findOrCreateGoogleUser(profile);
-    const finalToken = this.authService.issueToken(user);
+    const session = await this.authService.issueSession(
+      user,
+      this.deviceInfoFromReq(req),
+    );
     return res.redirect(
-      `${redirectUrl}/login?token=${encodeURIComponent(finalToken)}`,
+      `${redirectUrl}/login?token=${encodeURIComponent(session.token)}`,
     );
   }
 }

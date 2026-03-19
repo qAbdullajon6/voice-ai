@@ -33,7 +33,7 @@ export class TtsController {
   ) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    const user = this.authService.me(token);
+    const user = await this.authService.me(token);
     return this.ttsService.preview(user.id, body);
   }
 
@@ -51,7 +51,7 @@ export class TtsController {
   ) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    const user = this.authService.me(token);
+    const user = await this.authService.me(token);
     return this.ttsService.generate(user.id, body);
   }
 
@@ -63,7 +63,7 @@ export class TtsController {
   ) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    const user = this.authService.me(token);
+    const user = await this.authService.me(token);
     return this.ttsService.history(user.id, Number(limit ?? 20), cursor);
   }
 
@@ -71,7 +71,7 @@ export class TtsController {
   async get(@Req() req: Request, @Param('id') id: string) {
     const auth = req.headers.authorization ?? '';
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-    const user = this.authService.me(token);
+    const user = await this.authService.me(token);
     const job = await this.ttsService.getJob(user.id, id);
     if (!job) {
       throw new NotFoundException('job not found');

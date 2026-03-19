@@ -18,6 +18,12 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://voiceai.uz";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  icons: {
+    icon: [{ url: "/favicon.ico" }],
+    shortcut: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/favicon.ico" }],
+  },
+  manifest: "/site.webmanifest",
   title: {
     default:
       "Voice AI — Matndan nutq, AI ovoz | Text to Speech O'zbekiston | voiceai.uz",

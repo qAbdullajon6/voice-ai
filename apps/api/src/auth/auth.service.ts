@@ -4,8 +4,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import jwt, { type SignOptions } from 'jsonwebtoken';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { pool } from '../db';
 
 type UserRow = {
@@ -15,10 +15,29 @@ type UserRow = {
   password_hash: string | null;
 };
 
+type UserDeviceRow = {
+  id: string;
+  user_id: string;
+  name: string | null;
+  platform: string | null;
+  user_agent: string | null;
+  ip: string | null;
+  created_at: string;
+  last_used_at: string;
+  revoked_at: string | null;
+};
+
 type GoogleProfile = {
   email: string;
   name?: string;
   picture?: string;
+};
+
+type DeviceInfo = {
+  name?: string | null;
+  platform?: string | null;
+  userAgent?: string | null;
+  ip?: string | null;
 };
 
 @Injectable()
@@ -27,23 +46,98 @@ export class AuthService {
     return process.env.JWT_SECRET ?? 'change-me';
   }
 
-  private signToken(user: UserRow) {
-    return jwt.sign(
-      { sub: user.id, email: user.email, name: user.name },
-      this.jwtSecret(),
-      { expiresIn: '7d' },
+  private jwtExpiresIn(): SignOptions['expiresIn'] {
+    return (
+      (process.env.JWT_EXPIRES_IN as SignOptions['expiresIn']) ??
+      ('7d' as SignOptions['expiresIn'])
     );
   }
 
-  issueToken(user: UserRow) {
-    return this.signToken(user);
+  private signAccessToken(user: UserRow, deviceId: string) {
+    return jwt.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        name: user.name,
+        deviceId,
+        jti: randomUUID(),
+      },
+      this.jwtSecret(),
+      { expiresIn: this.jwtExpiresIn() },
+    );
+  }
+
+  private hashRefreshToken(refreshToken: string) {
+    return createHash('sha256').update(refreshToken, 'utf8').digest('hex');
+  }
+
+  private generateRefreshToken() {
+    // 48 bytes => 64-ish base64url chars
+    return randomBytes(48).toString('base64url');
   }
 
   private toUser(row: UserRow) {
     return { id: row.id, email: row.email, name: row.name };
   }
 
-  async register(payload: { name?: string; email: string; password: string }) {
+  private async createDevice(userId: string, info: DeviceInfo) {
+    const id = randomUUID();
+    const refreshToken = this.generateRefreshToken();
+    const refreshTokenHash = this.hashRefreshToken(refreshToken);
+
+    const result = await pool.query<UserDeviceRow>(
+      `
+      INSERT INTO user_devices (id, user_id, name, platform, user_agent, ip, refresh_token_hash)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, user_id, name, platform, user_agent, ip, created_at, last_used_at, revoked_at
+      `,
+      [
+        id,
+        userId,
+        info.name ?? null,
+        info.platform ?? null,
+        info.userAgent ?? null,
+        info.ip ?? null,
+        refreshTokenHash,
+      ],
+    );
+
+    return { device: result.rows[0], refreshToken };
+  }
+
+  async issueSession(user: UserRow, deviceInfo: DeviceInfo) {
+    const { device, refreshToken } = await this.createDevice(user.id, deviceInfo);
+    return {
+      token: this.signAccessToken(user, device.id),
+      refreshToken,
+      device,
+      user: this.toUser(user),
+    };
+  }
+
+  private async rotateRefreshToken(deviceId: string) {
+    const refreshToken = this.generateRefreshToken();
+    const refreshTokenHash = this.hashRefreshToken(refreshToken);
+    const result = await pool.query<{ id: string }>(
+      `
+      UPDATE user_devices
+      SET refresh_token_hash = $2, last_used_at = now()
+      WHERE id = $1 AND revoked_at IS NULL
+      RETURNING id
+      `,
+      [deviceId, refreshTokenHash],
+    );
+
+    if (!result.rowCount) {
+      throw new UnauthorizedException('Session revoked');
+    }
+    return refreshToken;
+  }
+
+  async register(
+    payload: { name?: string; email: string; password: string },
+    deviceInfo: DeviceInfo,
+  ) {
     const email = String(payload.email ?? '')
       .toLowerCase()
       .trim();
@@ -70,10 +164,13 @@ export class AuthService {
     );
 
     const user = result.rows[0];
-    return { token: this.signToken(user), user: this.toUser(user) };
+    return this.issueSession(user, deviceInfo);
   }
 
-  async login(payload: { email: string; password: string }) {
+  async login(
+    payload: { email: string; password: string },
+    deviceInfo: DeviceInfo,
+  ) {
     const email = String(payload.email ?? '')
       .toLowerCase()
       .trim();
@@ -100,20 +197,149 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    return { token: this.signToken(user), user: this.toUser(user) };
+    return this.issueSession(user, deviceInfo);
   }
 
-  me(token: string) {
+  async me(token: string) {
+    let data: {
+      sub: string;
+      email: string;
+      name?: string | null;
+      deviceId?: string;
+    };
+
     try {
-      const data = jwt.verify(token, this.jwtSecret()) as {
-        sub: string;
-        email: string;
-        name?: string | null;
-      };
-      return { id: data.sub, email: data.email, name: data.name ?? null };
+      data = jwt.verify(token, this.jwtSecret()) as typeof data;
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+
+    const deviceId = data.deviceId;
+    if (!deviceId) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const device = await pool.query<{ revoked_at: string | null }>(
+      `SELECT revoked_at FROM user_devices WHERE id = $1 AND user_id = $2`,
+      [deviceId, data.sub],
+    );
+    if (!device.rowCount || device.rows[0].revoked_at) {
+      throw new UnauthorizedException('Session revoked');
+    }
+
+    await pool.query(`UPDATE user_devices SET last_used_at = now() WHERE id = $1`, [
+      deviceId,
+    ]);
+
+    return {
+      id: data.sub,
+      email: data.email,
+      name: data.name ?? null,
+      deviceId,
+    };
+  }
+
+  async refresh(refreshToken: string) {
+    const token = String(refreshToken ?? '').trim();
+    if (!token) {
+      throw new BadRequestException('Refresh token required');
+    }
+
+    const refreshTokenHash = this.hashRefreshToken(token);
+    const result = await pool.query<
+      UserDeviceRow & { email: string; user_name: string | null }
+    >(
+      `
+      SELECT
+        d.id,
+        d.user_id,
+        d.name,
+        d.platform,
+        d.user_agent,
+        d.ip,
+        d.created_at,
+        d.last_used_at,
+        d.revoked_at,
+        u.email,
+        u.name AS user_name
+      FROM user_devices d
+      JOIN users u ON u.id = d.user_id
+      WHERE d.refresh_token_hash = $1
+      LIMIT 1
+      `,
+      [refreshTokenHash],
+    );
+
+    if (!result.rowCount) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const row = result.rows[0];
+    if (row.revoked_at) {
+      throw new UnauthorizedException('Session revoked');
+    }
+
+    const user: UserRow = {
+      id: row.user_id,
+      email: row.email,
+      name: row.user_name,
+      password_hash: null,
+    };
+
+    const newRefreshToken = await this.rotateRefreshToken(row.id);
+    return {
+      token: this.signAccessToken(user, row.id),
+      refreshToken: newRefreshToken,
+      device: {
+        id: row.id,
+        user_id: row.user_id,
+        name: row.name,
+        platform: row.platform,
+        user_agent: row.user_agent,
+        ip: row.ip,
+        created_at: row.created_at,
+        last_used_at: new Date().toISOString(),
+        revoked_at: row.revoked_at,
+      },
+      user: this.toUser(user),
+    };
+  }
+
+  async listDevices(userId: string) {
+    const result = await pool.query<UserDeviceRow>(
+      `
+      SELECT id, user_id, name, platform, user_agent, ip, created_at, last_used_at, revoked_at
+      FROM user_devices
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      `,
+      [userId],
+    );
+    return result.rows;
+  }
+
+  async revokeDevice(userId: string, deviceId: string) {
+    const id = String(deviceId ?? '').trim();
+    if (!id) {
+      throw new BadRequestException('Device id required');
+    }
+
+    const result = await pool.query<{ id: string }>(
+      `
+      UPDATE user_devices
+      SET revoked_at = now(), refresh_token_hash = NULL
+      WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+      RETURNING id
+      `,
+      [id, userId],
+    );
+
+    if (!result.rowCount) {
+      // idempotent: either not found, not owned, or already revoked
+      return { revoked: false };
+    }
+
+    return { revoked: true };
   }
 
   async exchangeGoogleCode(code: string, redirectUri: string) {

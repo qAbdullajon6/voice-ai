@@ -22,3 +22,6 @@ MVP goal: a minimal ElevenLabs-style TTS platform with a web studio, API access,
 
 ## Notes
 This repo starts with infra and docs first. Services will be scaffolded next.
+
+## Auth
+- Refresh token + device sessiyalar: `docs/AUTH_SESSIONS.md`

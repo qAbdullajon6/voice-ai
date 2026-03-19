@@ -18,53 +18,28 @@ import { useMiniPlayer } from "../../components/app/mini-player-store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
 
-const latestFromLibrary = [
-  {
-    title: "Jessica Anne Bogart - Chatty and Friendly",
-    subtitle:
-      "Jessica Anne Bogart - Conversations - Friendly and Conversational Female voice. Articulate, Confident and Helpful. Works well for Conversations.",
-    hue: 349,
-    rotate: 349,
-    audioSrc:
-      "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3",
-  },
-  {
-    title: "Kimberly - Warm, Calm & Natural Narrator",
-    subtitle:
-      "A warm, calm narrative voice with a steady, reassuring cadence. Ideal for long-form storytelling, audiobooks, educational content, and gentle children's stories. Clear, expressive without being dramatic, and well-suited for projects that require consistency, trust, and an engaging human presence.",
-    hue: 98,
-    rotate: 98,
-    audioSrc:
-      "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3",
-  },
-  {
-    title: "Clancy - Viral Long-Form Storyteller",
-    subtitle:
-      "Clancy's voice thrives in the world of modern social content—built for Social Media, and anywhere attention is currency. It carries confidence without sounding stiff, energy without sounding forced. Clancy delivers lines with sharp timing, clear emphasis, and a natural rhythm that makes hooks hit harder and jokes land cleaner. Whether it's fast cuts, punchy captions, or high-retention storytelling, this voice is tuned for momentum. If you're trying to go viral, Clancy is for you.",
-    hue: 264,
-    rotate: 264,
-    audioSrc:
-      "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3",
-  },
-  {
-    title: "Frankie - Friendly Instructor",
-    subtitle:
-      "Clear tutorials. Helpful training. Educational content with a vibe like your favorite teacher ever. Fun for training videos and explainers audiobooks. Confident, encouraging and approachable. American female voice by Miss Frankie. Western United States, Utah accent.",
-    hue: 294,
-    rotate: 294,
-    audioSrc:
-      "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3",
-  },
-  {
-    title: "Dr. Lovejoy - Soft Whispering ASMR",
-    subtitle:
-      "Dr Lovejoy - Pro Whisper ASMR  - Dr. Lovejoy famous erotic audio artist whisper ASMR, breathy and seductive.  ",
-    hue: 0,
-    rotate: 0,
-    audioSrc:
-      "https://storage.googleapis.com/eleven-public-prod/custom/voices/XfNU2rGpBa01ckF309OY/kuFJZI5s8GbgYm5f0hMo.mp3",
-  },
-];
+type LibraryVoice = {
+  id: string;
+  title: string;
+  subtitle: string;
+  audio_url: string;
+  hue: number;
+  rotate: number;
+};
+
+function hashToNumber(input: string) {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function fallbackHueRotate(id: string) {
+  const n = hashToNumber(id);
+  return { hue: n % 360, rotate: n % 360 };
+}
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -99,7 +74,9 @@ export default function DashboardPage() {
   const [authReady, setAuthReady] = useState(false);
   const [userName, setUserName] = useState<string>("");
   const [authToken, setAuthToken] = useState("");
-  const { open: openMiniPlayer } = useMiniPlayer();
+  const { open: openMiniPlayer, item: currentItem, isPlaying, toggle } = useMiniPlayer();
+  const [libraryVoices, setLibraryVoices] = useState<LibraryVoice[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -125,6 +102,19 @@ export default function DashboardPage() {
         router.replace("/login");
       });
   }, [router]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    setLibraryLoading(true);
+    fetch(`${API_URL}/voices/library/latest?limit=5`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const items = Array.isArray(data?.items) ? (data.items as LibraryVoice[]) : [];
+        setLibraryVoices(items);
+      })
+      .catch(() => {})
+      .finally(() => setLibraryLoading(false));
+  }, [authReady]);
 
   // History fetch removed here; MiniPlayer is global now.
 
@@ -229,29 +219,45 @@ export default function DashboardPage() {
             Latest from the library
           </p>
           <ul className="mb-2 list-none space-y-0 p-0">
-            {latestFromLibrary.map((v) => (
+            {(libraryVoices ?? []).map((v) => {
+              const vib = fallbackHueRotate(v.id);
+              const hue = Number.isFinite(v.hue) ? v.hue : vib.hue;
+              const rotate = Number.isFinite(v.rotate) ? v.rotate : vib.rotate;
+              return (
               <li
                 key={v.title}
                 className="group relative flex cursor-pointer items-center gap-3 border-b border-neutral-100 py-3 transition-colors duration-75 last:border-0 hover:bg-neutral-50/80 dark:border-neutral-800 dark:hover:bg-neutral-900/50"
-                onClick={() =>
-                  openMiniPlayer({
+                onClick={() => {
+                  const next = {
+                    id: v.id,
                     title: v.title,
-                    hue: v.hue,
-                    rotate: v.rotate,
-                    audioSrc: v.audioSrc,
+                    hue,
+                    rotate,
+                    audioSrc: v.audio_url,
                     languageLabel: "English preview",
-                  })
-                }
+                  };
+                  if (currentItem?.id === v.id) {
+                    toggle();
+                    return;
+                  }
+                  openMiniPlayer(next);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    openMiniPlayer({
+                    const next = {
+                      id: v.id,
                       title: v.title,
-                      hue: v.hue,
-                      rotate: v.rotate,
-                      audioSrc: v.audioSrc,
+                      hue,
+                      rotate,
+                      audioSrc: v.audio_url,
                       languageLabel: "English preview",
-                    });
+                    };
+                    if (currentItem?.id === v.id) {
+                      toggle();
+                      return;
+                    }
+                    openMiniPlayer(next);
                   }
                 }}
                 role="button"
@@ -262,19 +268,51 @@ export default function DashboardPage() {
                     <div
                       className="h-full w-full rounded-full bg-linear-to-br from-violet-400 via-fuchsia-500 to-orange-400"
                       style={{
-                        filter: `hue-rotate(${v.hue}deg) saturate(120%)`,
-                        transform: `rotate(${v.rotate}deg)`,
+                        filter: `hue-rotate(${hue}deg) saturate(120%)`,
+                        transform: `rotate(${rotate}deg)`,
                         objectFit: "cover",
                       }}
                     />
                   </div>
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity duration-100 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                  <button
+                    type="button"
+                    aria-label={currentItem?.id === v.id && isPlaying ? "Pause preview" : "Play preview"}
+                    className={[
+                      "absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity duration-100",
+                      "group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100",
+                    ].join(" ")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = {
+                        id: v.id,
+                        title: v.title,
+                        hue,
+                        rotate,
+                        audioSrc: v.audio_url,
+                        languageLabel: "English preview",
+                      };
+
+                      if (currentItem?.id !== v.id) {
+                        // open and autoplay from start
+                        openMiniPlayer(next);
+                        return;
+                      }
+                      // same item: toggle pause/unpause
+                      toggle();
+                    }}
+                  >
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
-                      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                        <path d="M8.38 3.69C7.05 2.87 5.33 3.82 5.33 5.39v9.22c0 1.57 1.72 2.52 3.05 1.7l7.47-4.61c1.27-.78 1.27-2.62 0-3.4L8.38 3.69z" />
-                      </svg>
+                      {currentItem?.id === v.id && isPlaying ? (
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+                        </svg>
+                      ) : (
+                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                          <path d="M8.38 3.69C7.05 2.87 5.33 3.82 5.33 5.39v9.22c0 1.57 1.72 2.52 3.05 1.7l7.47-4.61c1.27-.78 1.27-2.62 0-3.4L8.38 3.69z" />
+                        </svg>
+                      )}
                     </span>
-                  </div>
+                  </button>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-1 max-w-sm text-sm font-semibold text-neutral-950 dark:text-neutral-100">
@@ -294,7 +332,13 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               </li>
-            ))}
+              );
+            })}
+            {!libraryLoading && libraryVoices.length === 0 ? (
+              <li className="py-3 text-sm text-neutral-500 dark:text-neutral-400">
+                Hozircha library bo‘sh. `library_voice_previews` jadvaliga voice preview’larni qo‘shing.
+              </li>
+            ) : null}
           </ul>
           <Link href="/app/voices" tabIndex={-1}>
             <span className="inline-flex h-8 items-center justify-center rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-medium text-neutral-900 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700">
