@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Dark faqat html.dark bo‘lsa (tema tugmasi + localStorage). OS dark mode alohida ishlamaydi. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #0b0d10;
   --foreground: #e9edf2;

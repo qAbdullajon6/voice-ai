@@ -15,14 +15,12 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
   app.useGlobalFilters(new AllExceptionsFilter());
-  const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
   const extraOrigins =
     process.env.CORS_ORIGINS?.split(',').map((v) => v.trim()) ?? [];
   app.enableCors({
     origin: [
       'http://localhost:3000',
       'http://127.0.0.1:3000',
-      webUrl,
       ...extraOrigins,
     ],
     credentials: true,

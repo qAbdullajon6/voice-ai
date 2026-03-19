@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
+import { ThemeToggle } from "../theme-provider";
 import { CgToolbarLeft } from "react-icons/cg";
 import {
   RiAddLine,
@@ -76,7 +77,7 @@ function NavSection({
   return (
     <div className={collapsed ? "space-y-3" : "space-y-2"}>
       {title && !collapsed ? (
-        <div className="px-1.5 text-[11px] font-medium text-neutral-500">
+        <div className="px-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
           {title}
         </div>
       ) : null}
@@ -96,9 +97,9 @@ function NavSection({
                   : "justify-between gap-3 px-2 py-1.5",
                 active
                   ? collapsed
-                    ? "bg-white text-neutral-950 border-neutral-300 shadow-sm"
-                    : "bg-neutral-100/90 text-neutral-950 border-neutral-200"
-                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 hover:border-neutral-200",
+                    ? "bg-white text-neutral-950 border-neutral-300 shadow-sm dark:bg-neutral-800 dark:text-neutral-50 dark:border-neutral-600"
+                    : "bg-neutral-100/90 text-neutral-950 border-neutral-200 dark:bg-neutral-800/90 dark:text-neutral-50 dark:border-neutral-600"
+                  : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-950 hover:border-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:hover:border-neutral-600",
               ].join(" ")}
             >
               <span className={collapsed ? "grid h-5 w-5 place-items-center" : "flex min-w-0 items-center gap-2"}>
@@ -337,10 +338,10 @@ export function AppLayout({
   ];
 
   return (
-    <div className="app-light h-dvh min-h-screen overflow-hidden bg-white text-neutral-900">
+    <div className="app-light h-dvh min-h-screen overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <div
         className={[
-          "fixed left-0 top-0 z-41 hidden h-dvh border-r border-neutral-200 bg-neutral-50/90 backdrop-blur-md transition-[width] duration-200 md:block",
+          "fixed left-0 top-0 z-41 hidden h-dvh border-r border-neutral-200 bg-neutral-50/90 backdrop-blur-md transition-[width] duration-200 dark:border-neutral-800 dark:bg-neutral-900/95 md:block",
           sidebarOpen ? "w-64" : "w-18",
         ].join(" ")}
       >
@@ -436,7 +437,7 @@ export function AppLayout({
           </div>
 
           {sidebarOpen ? (
-            <div className="shrink-0 px-2 pt-6 text-xs text-neutral-400">
+            <div className="shrink-0 px-2 pt-6 text-xs text-neutral-400 dark:text-neutral-500">
               © {new Date().getFullYear()} VoiceAI
             </div>
           ) : null}
@@ -445,13 +446,13 @@ export function AppLayout({
 
       <div className={["flex h-dvh min-h-screen", sidebarOpen ? "md:pl-64" : "md:pl-18"].join(" ")}>
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur">
+          <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90">
             <div className="flex min-h-14 items-center justify-between gap-4 px-4 py-2 md:px-8">
               <div className="min-w-0 flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setSidebarOpen((prev) => !prev)}
-                  className="hidden h-9 w-9 cursor-pointer place-items-center rounded-[10px] border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 md:grid"
+                  className="hidden h-9 w-9 cursor-pointer place-items-center rounded-[10px] border border-neutral-200 bg-white text-neutral-600 transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 md:grid"
                   title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
                   aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
                 >
@@ -463,41 +464,36 @@ export function AppLayout({
               </div>
 
               <div className="flex items-center gap-2">
-                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700">
                   Feedback
                 </button>
-                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700">
                   Docs
                 </button>
-                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50">
+                <button className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700">
                   Ask
                 </button>
-                <button
-                  className="grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                  title="Theme"
-                >
-                  <span className="text-sm">◐</span>
-                </button>
+                <ThemeToggle />
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className="grid h-9 w-9 place-items-center rounded-full bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-900"
+                    className="grid h-9 w-9 place-items-center rounded-full bg-neutral-950 text-xs font-semibold text-white hover:bg-neutral-900 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
                     title={userName || "User"}
                   >
                     {userInitial}
                   </button>
                   {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-lg border border-neutral-200 bg-white shadow-lg">
-                      <div className="border-b border-neutral-200 px-4 py-3">
-                        <div className="text-sm font-semibold text-neutral-950">{userName || "User"}</div>
-                        <div className="mt-0.5 text-xs text-neutral-500">Workspace</div>
+                    <div className="absolute right-0 mt-2 w-48 rounded-lg border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900 dark:shadow-xl">
+                      <div className="border-b border-neutral-200 px-4 py-3 dark:border-neutral-700">
+                        <div className="text-sm font-semibold text-neutral-950 dark:text-neutral-100">{userName || "User"}</div>
+                        <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">Workspace</div>
                       </div>
                       <button
                         onClick={() => {
                           setUserMenuOpen(false);
                           router.push("/app/home");
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       >
                         Dashboard
                       </button>
@@ -506,7 +502,7 @@ export function AppLayout({
                           setUserMenuOpen(false);
                           handleLogout();
                         }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                        className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                       >
                         Logout
                       </button>
@@ -517,7 +513,7 @@ export function AppLayout({
             </div>
           </header>
 
-          <main className="min-h-0 flex-1 overflow-hidden px-5 py-6 md:px-8">
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-5 py-6 md:px-8">
             {children}
           </main>
         </div>
