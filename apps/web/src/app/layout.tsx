@@ -19,9 +19,12 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://voiceai.uz";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   icons: {
-    icon: [{ url: "/favicon.ico" }],
+    icon: [
+      { url: "/icon", sizes: "48x48", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
     shortcut: [{ url: "/favicon.ico" }],
-    apple: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/icon", sizes: "48x48", type: "image/png" }, { url: "/favicon.ico", sizes: "any" }],
   },
   manifest: "/site.webmanifest",
   title: {

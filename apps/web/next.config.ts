@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
 
   turbopack: {},
 
+  experimental: {
+    optimizeCss: true,
+  },
+
   async headers() {
     if (process.env.NODE_ENV !== "production") return [];
 

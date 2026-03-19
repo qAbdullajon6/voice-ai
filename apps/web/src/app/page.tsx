@@ -327,6 +327,7 @@ export default function Home() {
 
         {/* Top 3 feature cards */}
         <section className="mt-20 grid gap-6 sm:grid-cols-3">
+          <h2 className="sr-only">Asosiy imkoniyatlar</h2>
           {[
             {
               title: "Voice Cloning",
@@ -522,6 +523,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-24 border-t border-white/10 pt-12">
+          <h2 className="sr-only">Footer</h2>
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <Link href="/" className="text-lg font-bold text-white">
@@ -532,7 +534,7 @@ export default function Home() {
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Mahsulot</h4>
+              <h3 className="text-sm font-semibold text-white">Mahsulot</h3>
               <ul className="mt-3 space-y-2 text-sm text-gray-500">
                 <li><Link href="/text-to-speech" className="transition hover:text-white">Text to Speech</Link></li>
                 <li><Link href="/dashboard/voices" className="transition hover:text-white">Ovozlar</Link></li>
@@ -541,7 +543,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Kompaniya</h4>
+              <h3 className="text-sm font-semibold text-white">Kompaniya</h3>
               <ul className="mt-3 space-y-2 text-sm text-gray-500">
                 <li><Link href="/enterprise" className="transition hover:text-white">Enterprise</Link></li>
                 <li><a href="#" className="transition hover:text-white">Biz haqimizda</a></li>
@@ -549,7 +551,7 @@ export default function Home() {
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Huquqiy</h4>
+              <h3 className="text-sm font-semibold text-white">Huquqiy</h3>
               <ul className="mt-3 space-y-2 text-sm text-gray-500">
                 <li><a href="#" className="transition hover:text-white">Maxfiylik</a></li>
                 <li><a href="#" className="transition hover:text-white">Foydalanish shartlari</a></li>
