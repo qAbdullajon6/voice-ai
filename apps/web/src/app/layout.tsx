@@ -20,11 +20,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   icons: {
     icon: [
-      { url: "/icon", sizes: "48x48", type: "image/png" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: new URL("/icon", SITE_URL), sizes: "48x48", type: "image/png" },
+      { url: new URL("/favicon.ico", SITE_URL), sizes: "any" },
     ],
-    shortcut: [{ url: "/favicon.ico" }],
-    apple: [{ url: "/icon", sizes: "48x48", type: "image/png" }, { url: "/favicon.ico", sizes: "any" }],
+    shortcut: [{ url: new URL("/favicon.ico", SITE_URL) }],
+    apple: [
+      { url: new URL("/icon", SITE_URL), sizes: "48x48", type: "image/png" },
+      { url: new URL("/favicon.ico", SITE_URL), sizes: "any" },
+    ],
   },
   manifest: "/site.webmanifest",
   title: {
