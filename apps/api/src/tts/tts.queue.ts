@@ -4,6 +4,10 @@ export type TtsJob = {
   id: string;
   text: string;
   voice?: string;
+  model_id?: string;
+  // JSON stringified settings (e.g. { speed, stability, similarity }).
+  // We store as string because Redis hash values are strings.
+  settings?: string;
   output_format?: string;
   status: 'queued' | 'processing' | 'done' | 'failed';
   url?: string;

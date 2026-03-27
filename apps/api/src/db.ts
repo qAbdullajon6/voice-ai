@@ -97,7 +97,50 @@ export async function initDb() {
   );
 
   // Seed a few “Latest from the library” previews (only if empty)
-  const seedCount = await pool.query(`SELECT COUNT(*)::int AS c FROM library_voice_previews;`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS voices_catalog (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      provider_voice_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      short_name TEXT NOT NULL,
+      display_name TEXT,
+      local_name TEXT,
+      gender TEXT,
+      locale TEXT NOT NULL,
+      locale_name TEXT,
+      language TEXT,
+      accent TEXT,
+      voice_type TEXT,
+      category TEXT,
+      sample_rate_hertz TEXT,
+      words_per_minute TEXT,
+      styles JSONB NOT NULL DEFAULT '[]'::jsonb,
+      raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (provider, provider_voice_id)
+    );
+  `);
+
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_voices_catalog_locale ON voices_catalog(locale);`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_voices_catalog_language ON voices_catalog(language);`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_voices_catalog_accent ON voices_catalog(accent);`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_voices_catalog_category ON voices_catalog(category);`,
+  );
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_voices_catalog_provider ON voices_catalog(provider);`,
+  );
+
+  const seedCount = await pool.query<{ c: number }>(
+    `SELECT COUNT(*)::int AS c FROM library_voice_previews;`,
+  );
   if ((seedCount.rows?.[0]?.c ?? 0) === 0) {
     await pool.query(
       `

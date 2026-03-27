@@ -37,6 +37,8 @@ export class TtsService {
       id: randomUUID(),
       text: payload.text,
       voice: payload.voice,
+      model_id: payload.model_id ?? undefined,
+      settings: JSON.stringify(payload.settings ?? {}),
       output_format: payload.output_format,
       status: 'queued',
       created_at: now,

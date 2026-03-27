@@ -7,26 +7,7 @@ import * as React from "react";
 import { ThemeToggle } from "../theme-provider";
 import { MiniPlayerRoot } from "./mini-player-store";
 import { CgToolbarLeft } from "react-icons/cg";
-import {
-  RiAddLine,
-  RiApps2Line,
-  RiArrowUpDownLine,
-  RiBook3Line,
-  RiFileChartLine,
-  RiFileMusicLine,
-  RiFolderLine,
-  RiFolderVideoLine,
-  RiFocus3Line,
-  RiHome5Line,
-  RiLayoutGridLine,
-  RiMenuFoldLine,
-  RiMenuUnfoldLine,
-  RiMusic2Line,
-  RiOrganizationChart,
-  RiSparkling2Line,
-  RiUserVoiceLine,
-  RiVoiceprintLine,
-} from "react-icons/ri";
+import { RiFileMusicLine } from "react-icons/ri";
 type NavItem = {
   label: string;
   href: string;
@@ -36,20 +17,6 @@ type NavItem = {
 };
 
 const PAGE_TITLES: Record<string, string> = {
-  "/app/home": "Home",
-  "/app/voices": "Voices",
-  "/app/files": "Files",
-  "/app/studio": "Studio",
-  "/app/audiobooks": "Audiobooks",
-  "/app/flows": "Flows",
-  "/app/dubbing": "Dubbing",
-  "/app/speech-to-text": "Speech to Text",
-  "/app/sound-effects": "Sound Effects",
-  "/app/music": "Music",
-  "/app/image-video": "Image & Video",
-  "/app/templates": "Templates",
-  "/app/voice-changer": "Voice Changer",
-  "/app/voice-isolator": "Voice Isolator",
   "/app/text-to-speech": "Text to Speech",
 };
 
@@ -129,11 +96,9 @@ function NavSection({
 
 export function AppLayout({
   pageTitle,
-  workspace = "ElevenCreative",
   children,
 }: {
   pageTitle?: string;
-  workspace?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -194,146 +159,11 @@ export function AppLayout({
 
   const main: NavItem[] = [
     {
-      label: "Home",
-      href: "/app/home",
-      icon: (
-        <Icon>
-          <RiHome5Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Voices",
-      href: "/app/voices",
-      icon: (
-        <Icon>
-          <RiApps2Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Files",
-      href: "/app/files",
-      icon: (
-        <Icon>
-          <RiFolderLine size={16} />
-        </Icon>
-      ),
-    },
-  ];
-
-  const playground: NavItem[] = [
-    {
       label: "Text to Speech",
       href: "/app/text-to-speech",
       icon: (
         <Icon>
           <RiFileMusicLine size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Voice Changer",
-      href: "/app/voice-changer",
-      icon: (
-        <Icon>
-          <RiUserVoiceLine size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Voice Isolator",
-      href: "/app/voice-isolator",
-      icon: (
-        <Icon>
-          <RiFocus3Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Sound Effects",
-      href: "/app/sound-effects",
-      icon: (
-        <Icon>
-          <RiSparkling2Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Music",
-      href: "/app/music",
-      icon: (
-        <Icon>
-          <RiMusic2Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Image & Video",
-      href: "/app/image-video",
-      icon: (
-        <Icon>
-          <RiFolderVideoLine size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Templates",
-      href: "/app/templates",
-      icon: (
-        <Icon>
-          <RiLayoutGridLine size={16} />
-        </Icon>
-      ),
-    },
-  ];
-
-  const products: NavItem[] = [
-    {
-      label: "Studio",
-      href: "/app/studio",
-      badge: "New",
-      icon: (
-        <Icon>
-          <RiFileChartLine size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Audiobooks",
-      href: "/app/audiobooks",
-      badge: "New",
-      icon: (
-        <Icon>
-          <RiBook3Line size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Flows",
-      href: "/app/flows",
-      badge: "New",
-      icon: (
-        <Icon>
-          <RiOrganizationChart size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Dubbing",
-      href: "/app/dubbing",
-      icon: (
-        <Icon>
-          <RiUserVoiceLine size={16} />
-        </Icon>
-      ),
-    },
-    {
-      label: "Speech to Text",
-      href: "/app/speech-to-text",
-      icon: (
-        <Icon>
-          <RiVoiceprintLine size={16} />
         </Icon>
       ),
     },
@@ -359,7 +189,7 @@ export function AppLayout({
           <div className={sidebarOpen ? "" : "flex justify-center"}>
             <button
               type="button"
-              onClick={() => router.push("/app/home")}
+              onClick={() => router.push("/app/text-to-speech")}
               className={[
                 "cursor-pointer",
                 sidebarOpen
@@ -435,8 +265,6 @@ export function AppLayout({
             >
               <div className={sidebarOpen ? "space-y-5 pb-2" : "space-y-6 pb-2"}>
                 <NavSection items={main} collapsed={!sidebarOpen} />
-                <NavSection title="Playground" items={playground} collapsed={!sidebarOpen} />
-                <NavSection title="Products" items={products} collapsed={!sidebarOpen} />
               </div>
             </div>
           </div>
@@ -496,11 +324,11 @@ export function AppLayout({
                       <button
                         onClick={() => {
                           setUserMenuOpen(false);
-                          router.push("/app/home");
+                          router.push("/app/text-to-speech");
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
                       >
-                        Dashboard
+                        Text to Speech
                       </button>
                       <button
                         onClick={() => {

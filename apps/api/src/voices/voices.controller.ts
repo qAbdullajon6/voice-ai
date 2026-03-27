@@ -14,11 +14,25 @@ export class VoicesController {
   @Get()
   async list(
     @Query('locale') locale: string | undefined,
+    @Query('language') language: string | undefined,
+    @Query('accent') accent: string | undefined,
     @Query('gender') gender: string | undefined,
     @Query('q') q: string | undefined,
     @Query('voiceType') voiceType: string | undefined,
     @Query('style') style: string | undefined,
+    @Query('category') category: string | undefined,
+    @Query('provider') provider: string | undefined,
   ) {
-    return this.voicesService.list({ locale, gender, q, voiceType, style });
+    return this.voicesService.list({
+      locale,
+      language,
+      accent,
+      gender,
+      q,
+      voiceType,
+      style,
+      category,
+      provider,
+    });
   }
 }

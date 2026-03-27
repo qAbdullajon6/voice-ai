@@ -17,6 +17,15 @@ class Settings(BaseModel):
         or os.getenv("AZURE_SPEECH_REGION")
         or ""
     )
+    elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "")
+    elevenlabs_model_id: str = os.getenv(
+        "ELEVENLABS_MODEL_ID",
+        "eleven_multilingual_v2",
+    )
+    elevenlabs_base_url: str = os.getenv(
+        "ELEVENLABS_BASE_URL",
+        "https://api.elevenlabs.io",
+    )
 
     s3_access_key: str = os.getenv("S3_ACCESS_KEY", "")
     s3_secret_key: str = os.getenv("S3_SECRET_KEY", "")
